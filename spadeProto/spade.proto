@@ -1,0 +1,23 @@
+// [START declaration]
+syntax = "proto3";
+package spadeproto;
+option go_package = "./";
+// [END declaration]
+
+// Define empty message for functions returning nil
+message Empty{}
+
+message PublicParamsReq {}
+
+message PublicParamsRes {
+  bytes q = 1;  // Store q as bytes
+  bytes g = 2;  // Store g as bytes
+  repeated bytes mpk = 3; // Store mpk as bytes
+}
+
+//message
+
+service Curator {
+  rpc GetPublicParams(PublicParamsReq) returns (PublicParamsRes) {}
+
+}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"SPADE"
 	pb "SPADE/spadeProto"
 	"SPADE/utils"
 	"context"
@@ -14,7 +15,22 @@ import (
 
 type User struct {
 	id    int
+	q     *big.Int
+	g     *big.Int
 	alpha *big.Int
+	spade *SPADE.SPADE
+	mpk   []*big.Int
+}
+
+func NewUser(q, g *big.Int, mpk []*big.Int) *User {
+	return &User{
+		id:    1,
+		q:     q,
+		g:     g,
+		alpha: nil,
+		spade: nil,
+		mpk:   mpk,
+	}
 }
 
 func main() {
@@ -30,15 +46,25 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	q, g, _, err := getPublicParams(c.GetPublicParams(ctx, &pb.PublicParamsReq{}))
+	// SPADE calls here :)
+	q, g, mpk, err := readPublicParams(c.GetPublicParams(ctx, &pb.PublicParamsReq{}))
 	if err != nil {
-		log.Fatalf("could not greet: %v", err)
+		log.Fatalf("could not connect: %v", err)
 	}
-	utils.HexPrintBigInt("q", q)
-	utils.HexPrintBigInt("g", g)
+
+	user := NewUser(q, g, mpk)
+	spd := SPADE.NewSpade(q, g)
+	user.spade = spd
+	user.alpha = SPADE.RandomElementInZMod(q)
+	regKey := spd.Register(user.alpha)
+
+	utils.PrintBigIntHex("q", q)
+	utils.PrintBigIntHex("g", g)
+	utils.PrintBigIntHex("regKey", regKey)
 }
 
-func getPublicParams(res *pb.PublicParamsRes, err error) (*big.Int, *big.Int, []*big.Int, error) {
+// readPublicParams convert the byte stream data from server into required data type for client
+func readPublicParams(res *pb.PublicParamsRes, err error) (*big.Int, *big.Int, []*big.Int, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}

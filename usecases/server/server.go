@@ -12,8 +12,10 @@ import (
 	"net"
 )
 
-const numUser = 10
-const maxVecS = 1000
+// global variable for public parameters
+var cur *Curator
+var q *big.Int
+var g *big.Int
 
 type Curator struct {
 	q           *big.Int
@@ -42,25 +44,11 @@ func NewCurator() *Curator {
 }
 
 func (s *server) GetPublicParams(ctx context.Context, in *pb.PublicParamsReq) (*pb.PublicParamsRes, error) {
-	log.Printf("CURATOR >>> Received GetPublicParams req!")
-
-	cur := NewCurator()
-	// generate q, q = (2 ^ 128) + 1
-	q := new(big.Int).Exp(big.NewInt(2), big.NewInt(128), nil)
-	q.Add(q, big.NewInt(1))
-	// generate g
-	g := SPADE.RandomElementInZMod(q)
-	cur.q = q
-	cur.g = g
-	spd := SPADE.NewSpade(q, g)
-	cur.sks, cur.pks = spd.Setup(numUser, maxVecS)
-	cur.regKeys = make([]*big.Int, numUser)
-	cur.ciphertexts = make([][][]*big.Int, numUser)
-	cur.spade = spd
+	log.Printf("=== Received GetPublicParams req..")
 
 	// print q, g for debug
-	utils.HexPrintBigInt("q", cur.q)
-	utils.HexPrintBigInt("g", cur.g)
+	utils.PrintBigIntHex("q", cur.q)
+	utils.PrintBigIntHex("g", cur.g)
 
 	qBytes := cur.q.Bytes()
 	gBytes := cur.g.Bytes()
@@ -83,12 +71,29 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	s := grpc.NewServer()
-
 	log.Printf("Server listening on port %d", lis.Addr())
+
+	// system configuration
+	const NumUser = 10
+	const MaxVecS = 1000
+	// SPADE calls here :)
+
+	// generate public parameters
+	q = new(big.Int).Exp(big.NewInt(2), big.NewInt(128), nil)
+	q.Add(q, big.NewInt(1))
+	g = SPADE.RandomElementInZMod(q)
+	// ----------------------------------
+	cur = NewCurator()
+	cur.q = q
+	cur.g = g
+	spd := SPADE.NewSpade(q, g)
+	cur.sks, cur.pks = spd.Setup(NumUser, MaxVecS)
+	cur.regKeys = make([]*big.Int, NumUser)
+	cur.ciphertexts = make([][][]*big.Int, NumUser)
+	cur.spade = spd
 
 	pb.RegisterCuratorServer(s, &server{})
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
-
 }

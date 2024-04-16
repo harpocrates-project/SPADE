@@ -131,7 +131,7 @@ func GenDummyData(numUsers, ptVecSize int, maxValue int64) [][]int {
 	return dummyData
 }
 
-// HexPrintBigInt converts a big integer to a hexadecimal format and print it
-func HexPrintBigInt(label string, n *big.Int) {
+// PrintBigIntHex converts a big integer to a hexadecimal format and print it
+func PrintBigIntHex(label string, n *big.Int) {
 	fmt.Println("=== HBG: ", label, ":", fmt.Sprintf("%x", n))
 }

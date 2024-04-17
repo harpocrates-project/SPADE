@@ -10,16 +10,16 @@ import (
 func BenchmarkSpade(b *testing.B) {
 	for _, tc := range TestVector {
 		fmt.Println(TestString("SPADE", tc))
-		benchmarkSpade(b, tc.n, tc.m, tc.l, tc.v)
+		benchmarkSpade(b, tc.m, tc.n, tc.l, tc.v)
 	}
 }
 
-func benchmarkSpade(b *testing.B, n int, m int, l int64, v int) {
+func benchmarkSpade(b *testing.B, m int, n int, l int64, v int) {
 	if testing.Short() {
 		b.Skip("skipping benchmark in short mode.")
 	}
 
-	dummyData := utils.GenDummyData(n, m, l)
+	dummyData := utils.GenDummyData(m, n, l)
 
 	// generate q, q = (2 ^ 128) + 1
 	q := new(big.Int).Exp(big.NewInt(2), big.NewInt(128), nil)
@@ -27,21 +27,21 @@ func benchmarkSpade(b *testing.B, n int, m int, l int64, v int) {
 	// generate g
 	g := RandomElementInZMod(q)
 
-	spade := NewSpade(q, g)
+	spade := NewSpade(q, g, n)
 	var sks, pks, dks, res []*big.Int
 	var ciphertexts [][]*big.Int
 
 	b.Run("Setup", func(b *testing.B) {
 		b.ResetTimer()
-		sks, pks = spade.Setup(n, m)
+		sks, pks = spade.Setup()
 	})
 
 	// create dummy registration keys
-	alphas := make([]*big.Int, n)
-	regKeys := make([]*big.Int, n)
+	alphas := make([]*big.Int, m)
+	regKeys := make([]*big.Int, m)
 
 	b.Run("Register", func(b *testing.B) {
-		for i := 0; i < n; i++ {
+		for i := 0; i < m; i++ {
 			alphas[i] = RandomElementInZMod(q)
 			regKeys[i] = spade.Register(alphas[i])
 		}

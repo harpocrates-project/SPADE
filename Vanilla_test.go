@@ -8,8 +8,8 @@ import (
 
 func TestVanilla(t *testing.T) {
 	queryValue := 1
-	datasetDir := "./usecases/dataset"
-	fileName := "/b000101.txt"
+	datasetDir := "./usecases/dataset/"
+	fileName := "b000101.txt"
 	data := utils.ReadFile(datasetDir + fileName)
 
 	num := testQueryTotalNum(t, data, queryValue)

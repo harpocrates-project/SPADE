@@ -3,13 +3,19 @@ package main
 import (
 	"SPADE"
 	pb "SPADE/spadeProto"
+	"SPADE/usecases"
 	"SPADE/utils"
 	"context"
+	"errors"
 	"fmt"
 	"google.golang.org/grpc"
 	"log"
 	"math/big"
 	"net"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 )
 
 // global variable for public parameters
@@ -17,6 +23,15 @@ var cur *Curator
 var q *big.Int
 var g *big.Int
 
+// server Database Handler
+var mDBHandler usecases.DBHandler
+
+// server for protocol buffer instance
+type server struct {
+	pb.UnimplementedCuratorServer
+}
+
+// Curator we assume that it is trusted
 type Curator struct {
 	q           *big.Int
 	g           *big.Int
@@ -27,10 +42,7 @@ type Curator struct {
 	spade       *SPADE.SPADE
 }
 
-type server struct {
-	pb.UnimplementedCuratorServer
-}
-
+// NewCurator creates a new instance of Curator
 func NewCurator() *Curator {
 	return &Curator{
 		q:           nil,
@@ -43,7 +55,8 @@ func NewCurator() *Curator {
 	}
 }
 
-func (s *server) GetPublicParams(ctx context.Context, in *pb.PublicParamsReq) (*pb.PublicParamsRes, error) {
+// GetPublicParams called by @User and @Analyst to get access to the public SPADE parameters
+func (s *server) GetPublicParams(ctx context.Context, in *pb.PublicParamsReq) (*pb.PublicParamsResp, error) {
 	log.Printf("=== Received GetPublicParams req..")
 
 	// print q, g for debug
@@ -57,28 +70,44 @@ func (s *server) GetPublicParams(ctx context.Context, in *pb.PublicParamsReq) (*
 		mpkBytes = append(mpkBytes, pk.Bytes())
 	}
 
-	return &pb.PublicParamsRes{
+	return &pb.PublicParamsResp{
 		Q:   qBytes,
 		G:   gBytes,
 		Mpk: mpkBytes,
 	}, nil
 }
 
-func main() {
-	addr := fmt.Sprintf(":%d", utils.Port)
-	lis, err := net.Listen("tcp", addr)
+// UserRequest called by @User to send his/her encrypted data to the server for storage
+func (s *server) UserRequest(ctx context.Context, data *pb.UserReq) (*pb.UserResp, error) {
+	log.Printf("=== Received User Request..")
+	err := mDBHandler.CreateUsersCipherTable()
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return &pb.UserResp{Flag: false}, err
 	}
-	s := grpc.NewServer()
-	log.Printf("Server listening on port %d", lis.Addr())
+	err = mDBHandler.InsertUsersCipher(data)
+	if err != nil {
+		return &pb.UserResp{Flag: false}, err
+	}
+	return &pb.UserResp{Flag: true}, nil
+}
 
-	// system configuration
-	const NumUser = 10
-	const MaxVecS = 1000
+// Query called by @Analyst to get the corresponding decryption keys for a specific query value
+// to be able to partially decrypt a ciphertext vector corresponding to the user id he/she asked
+// for it.
+func (s *server) Query(ctx context.Context, req *pb.AnalystReq) (*pb.AnalystResp, error) {
+	//cur.spade.KeyDerivation(req.Id, req.Value, regKey[])
+	return &pb.AnalystResp{
+		Dkv:        nil,
+		Ciphertext: nil,
+	}, nil
+}
+
+func main() {
+	// creating a connection to DB beforehand
+	mDBHandler = usecases.NewDBHandler()
+	// ----------------------------------
 	// SPADE calls here :)
-
-	// generate public parameters
+	// let's generate the spade public parameters
 	q = new(big.Int).Exp(big.NewInt(2), big.NewInt(128), nil)
 	q.Add(q, big.NewInt(1))
 	g = SPADE.RandomElementInZMod(q)
@@ -86,14 +115,78 @@ func main() {
 	cur = NewCurator()
 	cur.q = q
 	cur.g = g
-	spd := SPADE.NewSpade(q, g)
-	cur.sks, cur.pks = spd.Setup(NumUser, MaxVecS)
-	cur.regKeys = make([]*big.Int, NumUser)
-	cur.ciphertexts = make([][][]*big.Int, NumUser)
+	spd := SPADE.NewSpade(q, g, usecases.MaxVecSize)
+	cur.sks, cur.pks = spd.Setup()
+	cur.regKeys = make([]*big.Int, usecases.NumUsers)
+	cur.ciphertexts = make([][][]*big.Int, usecases.NumUsers)
 	cur.spade = spd
+	// ----------------------------------
+
+	// Register shutdown hook to call DeleteFile upon termination
+	defer func() {
+		// IMPORTANT: we have to remove database file after we stop the server
+		// because technically each time we run the server, we are initiating it
+		// using a new set of public parameters, so if you don't remove the previous
+		// database, you will faced conflict between the old encrypted data using
+		// old set of parameters and the new encrypted data using the new set
+		// note: you can keep it as a comment if you want to measure the storage costs
+		log.Printf("Here we go for deleting database..")
+		utils.DeleteFile(usecases.DbName)
+	}()
+
+	// let's create a shutdown context for server
+	ctx, cancel := context.WithCancel(context.Background())
+	//defer cancel() // Cancel context when main function exits
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go startServerListener(ctx, &wg)
+
+	// Listen for termination signals
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+
+	// Wait for termination signal
+	<-signalCh
+
+	cancel()
+
+	// wait for shut down process to be finish
+	wg.Wait()
+
+	log.Println("Shutting down completed!")
+}
+
+// startServerListener creates a goroutine for starting gRPC server and running the server listener
+// upon receiving a shut-down signal it handles it in a proper way, because of whatever functionality
+// that we might need to call after the server got shut down
+func startServerListener(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	// setup server and start listening for clients
+	addr := fmt.Sprintf(":%d", utils.Port)
+	lis, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	log.Printf("=== Server starts listening on %s \n", lis.Addr().String())
 
 	pb.RegisterCuratorServer(s, &server{})
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+
+	// Serve function in a separate goroutine
+	go func() {
+		log.Println("=== server goroutine is running!")
+
+		if err := s.Serve(lis); err != nil {
+			if !errors.Is(err, grpc.ErrServerStopped) {
+				log.Fatalf("failed to serve: %v", err)
+			}
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Println("=== server goroutine is shutting down!")
+		s.Stop()
 	}
 }

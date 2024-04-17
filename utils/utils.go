@@ -88,6 +88,7 @@ func NormalizeDatasets(dir string, normVal int) {
 
 }
 
+// ReadFile accepts as input a hypnogram file path and returns file's content as a vector of integers
 func ReadFile(path string) []int {
 	file, err := os.Open(path)
 	if err != nil {
@@ -116,6 +117,32 @@ func ReadFile(path string) []int {
 	return data
 }
 
+// DeleteFile we use this function to remove database file after server stops working
+func DeleteFile(path string) {
+	err := os.Remove(path)
+	if err != nil {
+		fmt.Printf("Error deleting file %s: %v\n", path, err)
+	} else {
+		fmt.Println("Successfully deleted file:", path)
+	}
+}
+
+// AddPadding adds a fixed padding item to an array of integers up to a maxLength and return the new array
+func AddPadding(paddingItem int, maxLength int, data []int) []int {
+	if len(data) >= maxLength {
+		fmt.Println(">>> The Data length is already larger or equal with the max length!")
+		return data
+	} else {
+		newData := make([]int, 0, maxLength)
+		newData = append(newData, data...)
+		paddingCount := maxLength - len(data)
+		for i := 0; i < paddingCount; i++ {
+			newData = append(newData, paddingItem)
+		}
+		return newData
+	}
+}
+
 // GenDummyData generate dummy a vector of integers with "ptVecSize" elements,
 // for each user, the values are going to be between 1 and "maxValue"
 func GenDummyData(numUsers, ptVecSize int, maxValue int64) [][]int {
@@ -133,5 +160,5 @@ func GenDummyData(numUsers, ptVecSize int, maxValue int64) [][]int {
 
 // PrintBigIntHex converts a big integer to a hexadecimal format and print it
 func PrintBigIntHex(label string, n *big.Int) {
-	fmt.Println("=== HBG: ", label, ":", fmt.Sprintf("%x", n))
+	fmt.Println(">>> ", label, ":", fmt.Sprintf("%x", n))
 }

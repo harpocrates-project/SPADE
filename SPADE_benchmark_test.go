@@ -54,7 +54,7 @@ func benchmarkSpade(b *testing.B, m int, n int, l int64, v int) {
 
 	b.Run("KeyDerivation", func(b *testing.B) {
 		b.ResetTimer()
-		dks = spade.KeyDerivation(0, v, sks, regKeys)
+		dks = spade.KeyDerivation(0, v, sks, regKeys[0])
 	})
 
 	b.Run("Decryption", func(b *testing.B) {

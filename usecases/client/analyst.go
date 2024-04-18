@@ -69,12 +69,23 @@ func main() {
 		Value: 1,
 	}
 
-	resp, err := a.Query(ctx, req)
+	// get the unmarshal values
+	dkv, cts, err := pbHandler.ReadDecryptionKey(a.Query(ctx, req))
 	if err != nil {
 		log.Fatalf("could not send the request: %v", err)
 	}
 
-	fmt.Println(len(resp.Dkv))
+	// partially decrypt the ciphertext vector using dkv to get the result for query
+	results := spd.Decrypt(dkv, int(req.Value), cts)
 
+	// !!! WARNING !!!!
+	// THIS IS TO VERIFY THE results and proof the correctness of the protocol
+	// we are not going to do this in a real world application, Hopefully :)
+	// read the original user's data from file
+	datasetDir := "../dataset/"
+	fileName := "b000101.txt"
+	data := utils.AddPadding(usecases.PaddingItem, usecases.MaxVecSize, utils.ReadFile(datasetDir+fileName))
+
+	utils.VerifyResults(data, results, int(req.Value))
 	log.Println(">>> Analyst's operations are done!")
 }

@@ -162,3 +162,27 @@ func GenDummyData(numUsers, ptVecSize int, maxValue int64) [][]int {
 func PrintBigIntHex(label string, n *big.Int) {
 	fmt.Println(">>> ", label, ":", fmt.Sprintf("%x", n))
 }
+
+// VerifyResults check the decryption results and the original values to see the
+// match elements for the result we got from the decryption function
+func VerifyResults(originalData []int, res []*big.Int, v int) {
+	nMatchEls := 0
+	for i := 0; i < len(originalData); i++ {
+		if originalData[i] == v {
+			// i: the index for match query value in the original dataset
+			// check to see if the decrypted value from results for the same
+			// index i is 1 or not, 1 means that the query value match there.
+			one := new(big.Int).SetInt64(int64(1))
+			if res[i].Cmp(one) != 0 {
+				// the index from result vector does not match with the index for original dataset,
+				// which means that we are not getting the correct results!!
+				nMatchEls++
+			}
+		}
+	}
+	if nMatchEls != 0 {
+		fmt.Println("=== FAIL: there are ", nMatchEls, " elements from the results vector, that are not equal to the original data!")
+	} else {
+		fmt.Println("=== PASS: Hooray!")
+	}
+}

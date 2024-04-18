@@ -24,7 +24,7 @@ type User struct {
 
 func NewUser(q, g *big.Int, mpk []*big.Int) *User {
 	return &User{
-		id:    15,
+		id:    1,
 		q:     q,
 		g:     g,
 		alpha: nil,
@@ -71,9 +71,13 @@ func main() {
 	fileName := "b000101.txt"
 	data := utils.AddPadding(usecases.PaddingItem, usecases.MaxVecSize, utils.ReadFile(datasetDir+fileName))
 
-	// encrypt user's data using mpk
+	// encrypt user's data using "mpk"
 	ct := spade.Encrypt(user.mpk, user.alpha, data)
-	ctBytes := make([][]byte, 0, len(ct)) // Pre-allocate for efficiency
+	// log.Println(">>> ct[0]: ", ct[0])
+
+	// Note: here we encode the ct = [n][2]*big.Int into ctBytes = [n*2][t]byte,
+	// where t=len(ct_element.Bytes()), i.e. here will be ctBytes = [n*2][16]byte.
+	ctBytes := make([][]byte, 0, len(ct))
 	for _, row := range ct {
 		for _, item := range row {
 			ctBytes = append(ctBytes, item.Bytes())

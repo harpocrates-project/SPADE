@@ -89,16 +89,13 @@ func (spade *SPADE) Encrypt(pks []*big.Int, alpha *big.Int, data []int) [][]*big
 
 // KeyDerivation generates the decryption keys for specific query value "v",
 // where the query is to be executed for a specific user "id",
-// by using master secret key vector "sks", users' registration keys "regKeys"
+// by using master secret key vector "sks", user's registration key "regKey"
 // returns decryption keys "dk"
-func (spade *SPADE) KeyDerivation(id, value int, sks []*big.Int, regKeys []*big.Int) []*big.Int {
+func (spade *SPADE) KeyDerivation(id, value int, sks []*big.Int, regKey *big.Int) []*big.Int {
 	q := spade.q
-	//g := spade.g
-	regKey := regKeys[id]
 
 	dk := make([]*big.Int, spade.n)
 	for i := 0; i < spade.n; i++ {
-		//dk[i] = new(big.Int).Exp(g, new(big.Int).Mul(regKey, new(big.Int).Sub(new(big.Int).SetInt64(int64(value)), sks[i])), q)
 		dk[i] = new(big.Int).Exp(regKey, new(big.Int).Sub(new(big.Int).SetInt64(int64(value)), sks[i]), q)
 	}
 	return dk

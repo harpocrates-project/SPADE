@@ -95,11 +95,32 @@ func (s *server) UserRequest(ctx context.Context, data *pb.UserReq) (*pb.UserRes
 // to be able to partially decrypt a ciphertext vector corresponding to the user id he/she asked
 // for it.
 func (s *server) Query(ctx context.Context, req *pb.AnalystReq) (*pb.AnalystResp, error) {
-	//cur.spade.KeyDerivation(req.Id, req.Value, regKey[])
-	return &pb.AnalystResp{
+	resp := &pb.AnalystResp{
 		Dkv:        nil,
 		Ciphertext: nil,
-	}, nil
+	}
+
+	// need to retrieve the corresponding regKey for the user.id from DB
+	row, err := mDBHandler.GetUserReqById(req.Id)
+	if err != nil {
+		return resp, err
+	}
+
+	// Unmarshal regKey (slice of big.Int)
+	regKey := new(big.Int)
+	regKey.SetBytes(row.RegKey)
+
+	// derivative the decryption keys for the query value
+	dkv := cur.spade.KeyDerivation(int(req.Id), int(req.Value), cur.sks, regKey)
+
+	dkvBytes := make([][]byte, 0, len(dkv)) // Pre-allocate for efficiency
+	for _, dk := range dkv {
+		dkvBytes = append(dkvBytes, dk.Bytes())
+	}
+
+	resp.Dkv = dkvBytes
+	resp.Ciphertext = row.Ciphertext
+	return resp, nil
 }
 
 func main() {

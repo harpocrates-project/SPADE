@@ -14,7 +14,7 @@ func TestSpade(t *testing.T) {
 	}
 
 	//To manually select test case
-	//tc := TestVector[0]
+	//tc := TestVector[1]
 	//fmt.Println(TestString("SPADE", tc))
 	//testSpade(t, tc.n, tc.m, tc.l, tc.v)
 }

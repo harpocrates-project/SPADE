@@ -70,17 +70,24 @@ func (s *server) GetPublicParams(ctx context.Context, in *pb.PublicParamsReq) (*
 		mpkBytes = append(mpkBytes, pk.Bytes())
 	}
 
-	return &pb.PublicParamsResp{
+	resp := &pb.PublicParamsResp{
 		Q:   qBytes,
 		G:   gBytes,
 		Mpk: mpkBytes,
-	}, nil
+	}
+	log.Printf("=== Send PublicParam Response..")
+	utils.PrintMessageSize(resp)
+
+	return resp, nil
 }
 
 // UserRequest called by @User to send his/her encrypted data to the server for storage
 func (s *server) UserRequest(ctx context.Context, data *pb.UserReq) (*pb.UserResp, error) {
 	log.Printf("=== Received User Request..")
+	utils.PrintMessageSize(data)
+
 	err := mDBHandler.CreateUsersCipherTable()
+	log.Printf("=== Send User Request..")
 	if err != nil {
 		return &pb.UserResp{Flag: false}, err
 	}
@@ -99,7 +106,8 @@ func (s *server) Query(ctx context.Context, req *pb.AnalystReq) (*pb.AnalystResp
 		Dkv:        nil,
 		Ciphertext: nil,
 	}
-
+	log.Printf("=== Received Analyst Request..")
+	utils.PrintMessageSize(req)
 	// need to retrieve the corresponding regKey for the user.id from DB
 	row, err := mDBHandler.GetUserReqById(req.Id)
 	if err != nil {
@@ -120,6 +128,8 @@ func (s *server) Query(ctx context.Context, req *pb.AnalystReq) (*pb.AnalystResp
 
 	resp.Dkv = dkvBytes
 	resp.Ciphertext = row.Ciphertext
+	log.Printf("=== Send Analyst Response..")
+	utils.PrintMessageSize(resp)
 	return resp, nil
 }
 

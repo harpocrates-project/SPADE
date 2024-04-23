@@ -66,7 +66,7 @@ func main() {
 	// send a query for value(1) and user-id(1) to the server
 	req := &pb.AnalystReq{
 		Id:    1,
-		Value: 1,
+		Value: 3,
 	}
 
 	// get the unmarshal values
@@ -85,7 +85,7 @@ func main() {
 	datasetDir := "../dataset/"
 	fileName := "b000101.txt"
 	data := utils.AddPadding(usecases.PaddingItem, usecases.MaxVecSize, utils.ReadFile(datasetDir+fileName))
-
+	log.Println(results)
 	utils.VerifyResults(data, results, int(req.Value))
 	log.Println(">>> Analyst's operations are done!")
 }

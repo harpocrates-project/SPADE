@@ -3,6 +3,7 @@ package utils
 import (
 	"bufio"
 	"fmt"
+	"google.golang.org/protobuf/proto"
 	"math/big"
 	"math/rand"
 	"os"
@@ -185,4 +186,12 @@ func VerifyResults(originalData []int, res []*big.Int, v int) {
 	} else {
 		fmt.Println("=== PASS: Hooray!")
 	}
+}
+
+// PrintMessageSize takes a proto.Message m as input and prints its size in byte
+func PrintMessageSize(m proto.Message) {
+	mSizeBytes := proto.Size(m)
+	fmt.Printf(">>> Protobuf message size: %d bytes\n", mSizeBytes)
+	mSizeMB := float64(mSizeBytes) / (1024 * 1024)
+	fmt.Printf(">>> Protobuf message size: %f MB\n", mSizeMB)
 }

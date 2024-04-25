@@ -118,6 +118,43 @@ func ReadFile(path string) []int {
 	return data
 }
 
+func SaveInFile(path string, data [][]*big.Int) error {
+	// Open the file for writing
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Create a buffered writer for efficient writing
+	writer := bufio.NewWriter(file)
+
+	// Iterate over the rows of the slice
+	for _, row := range data {
+		// Iterate over the elements of each row
+		for _, num := range row {
+			// Write the big.Int value as a string to the file
+			_, err := writer.WriteString(num.String() + " ")
+			if err != nil {
+				return err
+			}
+		}
+		// Write a newline character to separate rows
+		_, err := writer.WriteString("\n")
+		if err != nil {
+			return err
+		}
+	}
+
+	// Flush the buffered writer to ensure all data is written to the file
+	err = writer.Flush()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // DeleteFile we use this function to remove database file after server stops working
 func DeleteFile(path string) {
 	err := os.Remove(path)
@@ -132,7 +169,7 @@ func DeleteFile(path string) {
 func AddPadding(paddingItem int, maxLength int, data []int) []int {
 	if len(data) >= maxLength {
 		fmt.Println(">>> The Data length is already larger or equal with the max length!")
-		return data
+		return data[:maxLength]
 	} else {
 		newData := make([]int, 0, maxLength)
 		newData = append(newData, data...)

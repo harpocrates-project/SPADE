@@ -27,7 +27,7 @@ var TestVector = []TestContext{
 	{
 		tc: S,
 		m:  10,
-		n:  100,
+		n:  1000,
 		l:  10,
 		v:  1,
 	},
@@ -41,6 +41,13 @@ var TestVector = []TestContext{
 	{
 		tc: L,
 		m:  1000,
+		n:  50000,
+		l:  10,
+		v:  1,
+	},
+	{
+		tc: L,
+		m:  10000,
 		n:  100000,
 		l:  10,
 		v:  1,

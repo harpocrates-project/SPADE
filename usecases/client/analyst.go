@@ -33,6 +33,8 @@ func NewAnalyst(q, g *big.Int, mpk []*big.Int) *Analyst {
 }
 
 func main() {
+	start := time.Now()
+
 	pbHandler := usecases.NewPBHandler()
 
 	log.Println(">>> Analyst starts connecting to the server..")
@@ -65,8 +67,8 @@ func main() {
 
 	// send a query for value(1) and user-id(1) to the server
 	req := &pb.AnalystReq{
-		Id:    1,
-		Value: 3,
+		Id:    0,
+		Value: 1,
 	}
 
 	// get the unmarshal values
@@ -78,6 +80,9 @@ func main() {
 	// partially decrypt the ciphertext vector using dkv to get the result for query
 	results := spd.Decrypt(dkv, int(req.Value), cts)
 
+	end := time.Now()
+	elapsed := end.Sub(start)
+	log.Printf("Analyst finished in %s", elapsed)
 	// !!! WARNING !!!!
 	// THIS IS TO VERIFY THE results and proof the correctness of the protocol
 	// we are not going to do this in a real world application, Hopefully :)
@@ -85,7 +90,7 @@ func main() {
 	datasetDir := "../dataset/"
 	fileName := "b000101.txt"
 	data := utils.AddPadding(usecases.PaddingItem, usecases.MaxVecSize, utils.ReadFile(datasetDir+fileName))
-	log.Println(results)
+	//log.Println(results)
 	utils.VerifyResults(data, results, int(req.Value))
 	log.Println(">>> Analyst's operations are done!")
 }

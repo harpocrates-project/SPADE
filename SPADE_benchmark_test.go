@@ -12,6 +12,10 @@ func BenchmarkSpade(b *testing.B) {
 		fmt.Println(TestString("SPADE", tc))
 		benchmarkSpade(b, tc.m, tc.n, tc.l, tc.v)
 	}
+	//To manually select test case
+	//tc := TestVector[2]
+	//fmt.Println(TestString("SPADE", tc))
+	//benchmarkSpade(b, tc.m, tc.n, tc.l, tc.v)
 }
 
 func benchmarkSpade(b *testing.B, m int, n int, l int64, v int) {

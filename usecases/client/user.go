@@ -22,9 +22,9 @@ type User struct {
 	mpk   []*big.Int
 }
 
-func NewUser(q, g *big.Int, mpk []*big.Int) *User {
+func NewUser(uid int, q, g *big.Int, mpk []*big.Int) *User {
 	return &User{
-		id:    1,
+		id:    uid,
 		q:     q,
 		g:     g,
 		alpha: nil,
@@ -32,7 +32,8 @@ func NewUser(q, g *big.Int, mpk []*big.Int) *User {
 	}
 }
 
-func main() {
+func RunUser(id int, data []int) (u *User) {
+	start := time.Now()
 	pbHandler := usecases.NewPBHandler()
 
 	log.Println(">>> Client starts connecting to the server..")
@@ -57,7 +58,7 @@ func main() {
 	// create a new user
 	// create an instance of SPADE with same public params of server
 	// generate a random secret for the user
-	user := NewUser(q, g, mpk)
+	user := NewUser(id, q, g, mpk)
 	spade := SPADE.NewSpade(q, g, usecases.MaxVecSize)
 	user.alpha = SPADE.RandomElementInZMod(q)
 	regKey := spade.Register(user.alpha)
@@ -66,14 +67,10 @@ func main() {
 	utils.PrintBigIntHex("g", g)
 	utils.PrintBigIntHex("regKey", regKey)
 
-	// read the user's data from file
-	datasetDir := "../dataset/"
-	fileName := "b000101.txt"
-	data := utils.AddPadding(usecases.PaddingItem, usecases.MaxVecSize, utils.ReadFile(datasetDir+fileName))
-
 	// encrypt user's data using "mpk"
 	ct := spade.Encrypt(user.mpk, user.alpha, data)
 	// log.Println(">>> ct[0]: ", ct[0])
+	// utils.SaveInFile("./ciphertext.txt", ct)
 
 	// Note: here we encode the ct = [n][2]*big.Int into ctBytes = [n*2][t]byte,
 	// where t=len(ct_element.Bytes()), i.e. here will be ctBytes = [n*2][16]byte.
@@ -101,5 +98,20 @@ func main() {
 		log.Printf("There is a problem with the user! Kill Bill")
 	}
 
+	end := time.Now()
+	elapsed := end.Sub(start)
+	log.Printf("User finished in %s", elapsed)
+
 	log.Println(">>> User's operations are done!")
+
+	return user
+}
+
+func main() {
+	log.Println(">>> Client is starting...")
+	// read the user's data from file
+	datasetDir := "../dataset/"
+	fileName := "b000101.txt"
+	data := utils.AddPadding(usecases.PaddingItem, usecases.MaxVecSize, utils.ReadFile(datasetDir+fileName))
+	RunUser(591, data)
 }

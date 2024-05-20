@@ -8,9 +8,9 @@ import (
 
 func TestVanilla(t *testing.T) {
 	queryValue := 1
-	datasetDir := "./usecases/dataset/"
+	datasetDir := "./usecases/hypnogram/dataset/"
 	fileName := "b000101.txt"
-	data := utils.ReadFile(datasetDir + fileName)
+	data := utils.ReadHypnogramFile(datasetDir + fileName)
 
 	num := testQueryTotalNum(t, data, queryValue)
 	resMap := testQueryNumRep(t, data, queryValue)

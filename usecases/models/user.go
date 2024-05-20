@@ -1,9 +1,8 @@
-package main
+package models
 
 import (
 	"SPADE"
 	pb "SPADE/spadeProto"
-	"SPADE/usecases/hypnogram"
 	"SPADE/utils"
 	"context"
 	"fmt"
@@ -32,13 +31,20 @@ func NewUser(uid int, q, g *big.Int, mpk []*big.Int) *User {
 	}
 }
 
-func RunUser(id int, data []int) (u *User) {
+// StartUser accepts user id and user's data as inputs and uses SPADE scheme to
+// encrypt user's data and send them to the server for storage
+func StartUser(config *Config, id int, data []int) (u *User) {
 	start := time.Now()
-	pbHandler := hypnogram.NewPBHandler()
+	pbHandler := NewPBHandler()
 
+	// grpc connection setup
 	log.Println(">>> Client starts connecting to the server..")
 	addr := fmt.Sprintf("localhost:%d", utils.Port)
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	opts := []grpc.DialOption{
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(config.MaxMsgSize)),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -46,7 +52,7 @@ func RunUser(id int, data []int) (u *User) {
 
 	// proto buffer init
 	c := pb.NewCuratorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), config.TimeOut)
 	defer cancel()
 
 	// SPADE calls for Users here :)
@@ -59,7 +65,7 @@ func RunUser(id int, data []int) (u *User) {
 	// create an instance of SPADE with same public params of server
 	// generate a random secret for the user
 	user := NewUser(id, q, g, mpk)
-	spade := SPADE.NewSpade(q, g, hypnogram.MaxVecSize)
+	spade := SPADE.NewSpade(q, g, config.MaxVecSize)
 	user.alpha = SPADE.RandomElementInZMod(q)
 	regKey := spade.Register(user.alpha)
 
@@ -112,6 +118,6 @@ func RunUser(id int, data []int) (u *User) {
 //	// read the user's data from file
 //	datasetDir := "../dataset/"
 //	fileName := "b000101.txt"
-//	data := utils.AddPadding(hypnogram.PaddingItem, hypnogram.MaxVecSize, utils.ReadFile(datasetDir+fileName))
-//	RunUser(591, data)
+//	data := utils.AddPadding(hypnogram.PaddingItem, hypnogram.MaxVecSize, utils.ReadHypnogramFile(datasetDir+fileName))
+//	StartUser(591, data)
 //}

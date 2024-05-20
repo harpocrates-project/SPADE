@@ -1,4 +1,4 @@
-package hypnogram
+package models
 
 import (
 	pb "SPADE/spadeProto"
@@ -170,9 +170,9 @@ func (d dbHandler) CreateUsersCipherTable() error {
 	return nil
 }
 
-func NewDBHandler() DBHandler {
+func NewDBHandler(database string, table string) DBHandler {
 	return &dbHandler{
-		DbName: DbName,
-		TbName: TbName,
+		DbName: database,
+		TbName: table,
 	}
 }

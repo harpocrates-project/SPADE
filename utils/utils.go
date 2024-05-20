@@ -20,10 +20,14 @@ func HandleError(e error) {
 	}
 }
 
-// NormalizeDatasets this function removes zeros from hypnogram values
+/**
+ * Hypnogram Dataset
+ */
+
+// NormalizeHypnogramDatasets this function removes zeros from hypnogram values
 // by adding `normVal` to all elements
 // Do not run this twice :)
-func NormalizeDatasets(dir string, normVal int) {
+func NormalizeHypnogramDatasets(dir string, normVal int) {
 	// Read all files in the directory
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -89,8 +93,8 @@ func NormalizeDatasets(dir string, normVal int) {
 
 }
 
-// ReadFile accepts as input a hypnogram file path and returns file's content as a vector of integers
-func ReadFile(path string) []int {
+// ReadHypnogramFile accepts as input a hypnogram file path and returns file's content as a vector of integers
+func ReadHypnogramFile(path string) []int {
 	file, err := os.Open(path)
 	if err != nil {
 		fmt.Printf("Error opening file %s: %v\n", path, err)
@@ -118,6 +122,7 @@ func ReadFile(path string) []int {
 	return data
 }
 
+// SaveInFile accepts create a file within the path and save the data
 func SaveInFile(path string, data [][]*big.Int) error {
 	// Open the file for writing
 	file, err := os.Create(path)
@@ -168,7 +173,7 @@ func DeleteFile(path string) {
 // AddPadding adds a fixed padding item to an array of integers up to a maxLength and return the new array
 func AddPadding(paddingItem int, maxLength int, data []int) []int {
 	if len(data) >= maxLength {
-		fmt.Println(">>> The Data length is already larger or equal with the max length!")
+		//fmt.Println(">>> The Data length is already larger or equal with the max length!")
 		return data[:maxLength]
 	} else {
 		newData := make([]int, 0, maxLength)
@@ -231,4 +236,72 @@ func PrintMessageSize(m proto.Message) {
 	fmt.Printf(">>> Protobuf message size: %d bytes\n", mSizeBytes)
 	mSizeMB := float64(mSizeBytes) / (1024 * 1024)
 	fmt.Printf(">>> Protobuf message size: %f MB\n", mSizeMB)
+}
+
+/**
+ * DNA Dataset
+ */
+
+// ReadDNASeqFile opens a DNA seq file and returns its content as an array of strings
+func ReadDNASeqFile(filename string) []string {
+	file, err := os.Open(filename)
+	if err != nil {
+		fmt.Printf("Error opening file %s: %v\n", filename, err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	data := make([]string, 0)
+	for scanner.Scan() {
+		data = append(data, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Printf("Error scanning file %s: %v\n", filename, err)
+	}
+	return data
+}
+
+// ConvertDNASeq2Dinucleotide accept a pair of dna sequence and break them down into
+// vector of dinucleotide elements
+func ConvertDNASeq2Dinucleotide(dnaSeq []string) []string {
+	dinucleotides := make([]string, 0)
+	for i := 0; i < len(dnaSeq); i++ {
+		for j := 0; j < len(dnaSeq[i])-1; j++ {
+			dinucleotides = append(dinucleotides, dnaSeq[i][j:j+2])
+		}
+	}
+	return dinucleotides
+}
+
+// MapDinucleotideToInt maps the converted DNA dinucleotides to integers using a pre-defined map
+// because SPADE only works with integers, and you must convert data into integers
+func MapDinucleotideToInt(dinucleotides []string) []int {
+	dinuMaps := map[string]int{
+		"AA": 1,
+		"AC": 2,
+		"AG": 3,
+		"AT": 4,
+		"CA": 5,
+		"CC": 6,
+		"CG": 7,
+		"CT": 8,
+		"GA": 9,
+		"GC": 10,
+		"GG": 11,
+		"GT": 12,
+		"TA": 13,
+		"TC": 14,
+		"TG": 15,
+		"TT": 16,
+	}
+	result := make([]int, len(dinucleotides))
+	for i, dinu := range dinucleotides {
+		value, ok := dinuMaps[dinu]
+		if !ok {
+			fmt.Printf("Warning: unknown dinucleotide: %s\n", dinu)
+			continue
+		}
+		result[i] = value
+	}
+	return result
 }

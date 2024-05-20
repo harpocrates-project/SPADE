@@ -1,9 +1,8 @@
-package main
+package models
 
 import (
 	"SPADE"
 	pb "SPADE/spadeProto"
-	"SPADE/usecases/hypnogram"
 	"SPADE/utils"
 	"context"
 	"errors"
@@ -24,7 +23,7 @@ var q *big.Int
 var g *big.Int
 
 // server Database Handler
-var mDBHandler hypnogram.DBHandler
+var mDBHandler DBHandler
 
 // server for protocol buffer instance
 type server struct {
@@ -133,9 +132,9 @@ func (s *server) Query(ctx context.Context, req *pb.AnalystReq) (*pb.AnalystResp
 	return resp, nil
 }
 
-func main() {
+func StartServer(config *Config) {
 	// creating a connection to DB beforehand
-	mDBHandler = hypnogram.NewDBHandler()
+	mDBHandler = NewDBHandler(config.DbName, config.TbName)
 	// ----------------------------------
 	// SPADE calls here :)
 	// let's generate the spade public parameters
@@ -146,10 +145,10 @@ func main() {
 	cur = NewCurator()
 	cur.q = q
 	cur.g = g
-	spd := SPADE.NewSpade(q, g, hypnogram.MaxVecSize)
+	spd := SPADE.NewSpade(q, g, config.MaxVecSize)
 	cur.sks, cur.pks = spd.Setup()
-	cur.regKeys = make([]*big.Int, hypnogram.NumUsers)
-	cur.ciphertexts = make([][][]*big.Int, hypnogram.NumUsers)
+	cur.regKeys = make([]*big.Int, config.NumUsers)
+	cur.ciphertexts = make([][][]*big.Int, config.NumUsers)
 	cur.spade = spd
 	// ----------------------------------
 
@@ -162,7 +161,7 @@ func main() {
 		// old set of parameters and the new encrypted data using the new set
 		// note: you can keep it as a comment if you want to measure the storage costs
 		log.Printf("Here we go for deleting database..")
-		utils.DeleteFile(hypnogram.DbName)
+		utils.DeleteFile(config.DbName)
 	}()
 
 	// let's create a shutdown context for server
@@ -170,7 +169,7 @@ func main() {
 	//defer cancel() // Cancel context when main function exits
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go startServerListener(ctx, &wg)
+	go startServerListener(ctx, &wg, config.MaxMsgSize)
 
 	// Listen for termination signals
 	signalCh := make(chan os.Signal, 1)
@@ -190,7 +189,7 @@ func main() {
 // startServerListener creates a goroutine for starting gRPC server and running the server listener
 // upon receiving a shut-down signal it handles it in a proper way, because of whatever functionality
 // that we might need to call after the server got shut down
-func startServerListener(ctx context.Context, wg *sync.WaitGroup) {
+func startServerListener(ctx context.Context, wg *sync.WaitGroup, maxMsgSize int) {
 	defer wg.Done()
 
 	// setup server and start listening for clients
@@ -199,7 +198,10 @@ func startServerListener(ctx context.Context, wg *sync.WaitGroup) {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
+	opts := []grpc.ServerOption{
+		grpc.MaxRecvMsgSize(maxMsgSize), // Adjust limit as needed (in bytes)
+	}
+	s := grpc.NewServer(opts...)
 	log.Printf("=== Server starts listening on %s \n", lis.Addr().String())
 
 	pb.RegisterCuratorServer(s, &server{})

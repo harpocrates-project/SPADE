@@ -1,9 +1,8 @@
-package main
+package models
 
 import (
 	"SPADE"
 	pb "SPADE/spadeProto"
-	"SPADE/usecases/hypnogram"
 	"SPADE/utils"
 	"context"
 	"fmt"
@@ -32,14 +31,20 @@ func NewAnalyst(q, g *big.Int, mpk []*big.Int) *Analyst {
 	}
 }
 
-func main() {
+// StartAnalyst accept the configuration as in input and use SPADE to partially decrypt
+// and get the results from a user's cipher
+func StartAnalyst(config *Config, userID, queryValue int64) (int64, []*big.Int) {
 	start := time.Now()
 
-	pbHandler := hypnogram.NewPBHandler()
+	pbHandler := NewPBHandler()
 
 	log.Println(">>> Analyst starts connecting to the server..")
 	addr := fmt.Sprintf("localhost:%d", utils.Port)
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	opts := []grpc.DialOption{
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(config.MaxMsgSize)),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -47,7 +52,7 @@ func main() {
 
 	// proto buffer init
 	a := pb.NewCuratorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), config.TimeOut)
 	defer cancel()
 
 	// SPADE calls for Analysts here :)
@@ -59,7 +64,7 @@ func main() {
 	// create a new Analyst
 	// create an instance of SPADE with same public params of server
 	analyst := NewAnalyst(q, g, mpk)
-	spd := SPADE.NewSpade(q, g, hypnogram.MaxVecSize)
+	spd := SPADE.NewSpade(q, g, config.MaxVecSize)
 	analyst.spade = spd
 
 	utils.PrintBigIntHex("q", q)
@@ -67,8 +72,8 @@ func main() {
 
 	// send a query for value(1) and user-id(1) to the server
 	req := &pb.AnalystReq{
-		Id:    0,
-		Value: 1,
+		Id:    userID,
+		Value: queryValue,
 	}
 
 	// get the unmarshal values
@@ -83,14 +88,5 @@ func main() {
 	end := time.Now()
 	elapsed := end.Sub(start)
 	log.Printf("Analyst finished in %s", elapsed)
-	// !!! WARNING !!!!
-	// THIS IS TO VERIFY THE results and proof the correctness of the protocol
-	// we are not going to do this in a real world application, Hopefully :)
-	// read the original user's data from file
-	datasetDir := "../dataset/"
-	fileName := "b000101.txt"
-	data := utils.AddPadding(hypnogram.PaddingItem, hypnogram.MaxVecSize, utils.ReadFile(datasetDir+fileName))
-	//log.Println(results)
-	utils.VerifyResults(data, results, int(req.Value))
-	log.Println(">>> Analyst's operations are done!")
+	return req.Value, results
 }

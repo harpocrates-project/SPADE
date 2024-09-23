@@ -4,6 +4,7 @@ import (
 	"SPADE/utils"
 	"crypto/rand"
 	"fmt"
+	"log"
 	"math/big"
 )
 
@@ -18,6 +19,9 @@ type SPADE struct {
 
 // NewSpade returns new instantiation of spade with "nil" values
 func NewSpade(modulus, generator *big.Int, maxPtVecSize int) *SPADE {
+	if GCD(generator, modulus) != 1 {
+		log.Fatal(">>> Can not setup SPADE using the generator and modulus, g and q are not relatively prime!")
+	}
 	return &SPADE{
 		n: maxPtVecSize,
 		q: modulus,
@@ -121,4 +125,14 @@ func RandomElementInZMod(q *big.Int) *big.Int {
 	r, err := rand.Int(rand.Reader, q)
 	utils.HandleError(err)
 	return r
+}
+
+// GCD check if a and b are relatively prime to each other or not,
+// if a and b are relatively prime returns 1, otherwise returns 0
+func GCD(a, b *big.Int) int {
+	gcd := new(big.Int).GCD(nil, nil, a, b)
+	if gcd.Cmp(big.NewInt(1)) == 0 {
+		return 1
+	}
+	return 0
 }

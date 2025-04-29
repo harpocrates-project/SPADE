@@ -5,7 +5,6 @@ import (
 	pb "SPADE/spadeProto"
 	"SPADE/utils"
 	"context"
-	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
@@ -33,18 +32,17 @@ func NewUser(uid int, q, g *big.Int, mpk []*big.Int) *User {
 
 // StartUser accepts user id and user's data as inputs and uses SPADE scheme to
 // encrypt user's data and send them to the server for storage
-func StartUser(config *Config, id int, data []int) (u *User) {
+func StartUser(serverAddr string, config *Config, id int, data []int) (u *User) {
 	start := time.Now()
 	pbHandler := NewPBHandler()
 
 	// grpc connection setup
 	log.Println(">>> Client starts connecting to the server..")
-	addr := fmt.Sprintf("localhost:%d", utils.Port)
 	opts := []grpc.DialOption{
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(config.MaxMsgSize)),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
-	conn, err := grpc.Dial(addr, opts...)
+	conn, err := grpc.Dial(serverAddr, opts...)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

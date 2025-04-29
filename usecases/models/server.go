@@ -6,7 +6,6 @@ import (
 	"SPADE/utils"
 	"context"
 	"errors"
-	"fmt"
 	"google.golang.org/grpc"
 	"log"
 	"math/big"
@@ -113,6 +112,10 @@ func (s *server) Query(ctx context.Context, req *pb.AnalystReq) (*pb.AnalystResp
 		return resp, err
 	}
 
+	if row == nil {
+		return resp, nil
+	}
+
 	// Unmarshal regKey (slice of big.Int)
 	regKey := new(big.Int)
 	regKey.SetBytes(row.RegKey)
@@ -132,7 +135,7 @@ func (s *server) Query(ctx context.Context, req *pb.AnalystReq) (*pb.AnalystResp
 	return resp, nil
 }
 
-func StartServer(config *Config) {
+func StartServer(serverAddr string, config *Config) {
 	// creating a connection to DB beforehand
 	mDBHandler = NewDBHandler(config.DbName, config.TbName)
 	// ----------------------------------
@@ -169,7 +172,7 @@ func StartServer(config *Config) {
 	//defer cancel() // Cancel context when main function exits
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go startServerListener(ctx, &wg, config.MaxMsgSize)
+	go startServerListener(ctx, &wg, config.MaxMsgSize, serverAddr)
 
 	// Listen for termination signals
 	signalCh := make(chan os.Signal, 1)
@@ -189,12 +192,11 @@ func StartServer(config *Config) {
 // startServerListener creates a goroutine for starting gRPC server and running the server listener
 // upon receiving a shut-down signal it handles it in a proper way, because of whatever functionality
 // that we might need to call after the server got shut down
-func startServerListener(ctx context.Context, wg *sync.WaitGroup, maxMsgSize int) {
+func startServerListener(ctx context.Context, wg *sync.WaitGroup, maxMsgSize int, serverAddr string) {
 	defer wg.Done()
 
 	// setup server and start listening for clients
-	addr := fmt.Sprintf(":%d", utils.Port)
-	lis, err := net.Listen("tcp", addr)
+	lis, err := net.Listen("tcp", serverAddr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}

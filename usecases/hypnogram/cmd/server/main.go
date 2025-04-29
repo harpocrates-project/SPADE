@@ -2,14 +2,16 @@ package main
 
 import (
 	"SPADE/usecases/models"
+	"os"
 )
 
 // InitServer start the SPADE server using hypnogram use-case configuration
-func InitServer() {
+func InitServer(serverAddr string) {
 	config := models.NewConfig(DbName, TbName, NumUsers, MaxVecSize, PaddingItem, TimeOut, MaxMsgSize)
-	models.StartServer(config)
+	models.StartServer(serverAddr, config)
 }
 
 func main() {
-	InitServer()
+	serverAddr := os.Args[1]
+	InitServer(serverAddr)
 }

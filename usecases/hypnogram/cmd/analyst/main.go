@@ -3,16 +3,17 @@ package main
 import (
 	"SPADE/usecases/models"
 	"log"
+	"os"
+        "fmt"
+        "strconv"
 )
 
 // InitAnalyst start the SPADE analyst using hypnogram use-case configuration
-func InitAnalyst() {
+func InitAnalyst(serverAddr string, userID int64, queryValue int64) {
 	config := models.NewConfig(DbName, TbName, NumUsers, MaxVecSize, PaddingItem, TimeOut, MaxMsgSize)
-	userID := int64(0)
-	queryValue := int64(3)
 	// start analyst entity, send a req to server for getting the cipher belongs to
 	// the user with userID and decrypt it for the specific query value queryValue
-	queryValue, results := models.StartAnalyst(config, userID, queryValue)
+	queryValue, results := models.StartAnalyst(serverAddr, config, userID, queryValue)
 
 	// !!! WARNING !!!!
 	// THIS IS TO VERIFY THE results and proof the correctness of the protocol
@@ -28,5 +29,12 @@ func InitAnalyst() {
 }
 
 func main() {
-	InitAnalyst()
+	serverAddr := os.Args[1]
+	userID, err := strconv.ParseInt(os.Args[2], 10, 64)
+    	if err != nil {
+		fmt.Println("Error converting user id to 64bit integer", err)
+		panic(err)
+    	}
+	// Why 3?
+	InitAnalyst(serverAddr, userID, 3)
 }

@@ -5,7 +5,6 @@ import (
 	pb "SPADE/spadeProto"
 	"SPADE/utils"
 	"context"
-	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
@@ -33,18 +32,17 @@ func NewAnalyst(q, g *big.Int, mpk []*big.Int) *Analyst {
 
 // StartAnalyst accept the configuration as in input and use SPADE to partially decrypt
 // and get the results from a user's cipher
-func StartAnalyst(config *Config, userID, queryValue int64) (int64, []*big.Int) {
+func StartAnalyst(serverAddr string, config *Config, userID, queryValue int64) (int64, []*big.Int) {
 	start := time.Now()
 
 	pbHandler := NewPBHandler()
 
 	log.Println(">>> Analyst starts connecting to the server..")
-	addr := fmt.Sprintf("localhost:%d", utils.Port)
 	opts := []grpc.DialOption{
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(config.MaxMsgSize)),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
-	conn, err := grpc.Dial(addr, opts...)
+	conn, err := grpc.Dial(serverAddr, opts...)
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

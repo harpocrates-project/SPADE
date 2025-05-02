@@ -1,0 +1,99 @@
+{
+  "name": "spade_analyst_query",
+  "label": "spade_analyst_query",
+  "description": "Runs spade analyst command",
+  "version": "1.0",
+  "schema-version": "1.0",
+  "image": "spade:latest",
+  "type": "docker",
+  "command-line": "/bin/analyst #HOST# #SCAN# #QUERY# /output/#SCAN#_#QUERY#.csv",
+  "mounts": [
+    {
+      "name": "results-out",
+      "writable": true,
+      "path": "/output"
+    }
+  ],
+  "environment-variables": {},
+  "ports": {},
+  "inputs": [
+    {
+      "name": "host",
+      "description": "SPADE host",
+      "type": "string",
+      "required": true,
+      "replacement-key": "#HOST#",
+      "select-values": []
+    },
+    {
+      "name": "scan",
+      "description": "Input scan",
+      "type": "string",
+      "required": true,
+      "replacement-key": "#SCAN#",
+      "select-values": []
+    },
+    {
+      "name": "query",
+      "description": "Input query",
+      "type": "number",
+      "required": true,
+      "replacement-key": "#QUERY#",
+      "select-values": []
+    }
+  ],
+  "outputs": [
+    {
+      "name": "results",
+      "description": "The results files",
+      "required": true,
+      "mount": "results-out"
+    }
+  ],
+  "xnat": [
+    {
+      "name": "spade_analyst_query_scan",
+      "label": "spade_analyst_query",
+      "description": "Run spade analyst query with scan name as SPADE user_id",
+      "contexts": [
+        "xnat:imageScanData"
+      ],
+      "external-inputs": [
+        {
+          "name": "scan",
+          "description": "Input scan",
+          "type": "Scan",
+          "required": true,
+          "load-children": false
+        }
+      ],
+      "derived-inputs": [
+        {
+          "name": "scan-id",
+          "type": "string",
+          "required": true,
+          "provides-value-for-command-input": "scan",
+          "user-settable": false,
+          "load-children": false,
+          "derived-from-wrapper-input": "scan",
+          "derived-from-xnat-object-property": "id",
+          "multiple": false
+        }
+      ],
+      "output-handlers": [
+        {
+          "name": "results-resource",
+          "accepts-command-output": "results",
+          "as-a-child-of": "scan",
+          "type": "Resource",
+          "label": "SPADE-ANALYST-RESULTS",
+          "tags": []
+        }
+      ]
+    }
+  ],
+  "container-labels": {},
+  "generic-resources": {},
+  "ulimits": {},
+  "secrets": []
+}

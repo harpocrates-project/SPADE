@@ -103,6 +103,7 @@ func (s *server) Query(ctx context.Context, req *pb.AnalystReq) (*pb.AnalystResp
 	resp := &pb.AnalystResp{
 		Dkv:        nil,
 		Ciphertext: nil,
+		PtSize:     0,
 	}
 	log.Printf("=== Received Analyst Request..")
 	utils.PrintMessageSize(req)
@@ -130,6 +131,7 @@ func (s *server) Query(ctx context.Context, req *pb.AnalystReq) (*pb.AnalystResp
 
 	resp.Dkv = dkvBytes
 	resp.Ciphertext = row.Ciphertext
+	resp.PtSize = row.PtSize
 	log.Printf("=== Send Analyst Response..")
 	utils.PrintMessageSize(resp)
 	return resp, nil

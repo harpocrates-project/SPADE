@@ -75,7 +75,10 @@ func StartAnalyst(serverAddr string, config *Config, userID, queryValue int64) (
 	}
 
 	// get the unmarshal values
-	dkv, cts, err := pbHandler.ReadDecryptionKey(a.Query(ctx, req))
+	dkv, cts, ptSize, err := pbHandler.ReadDecryptionKey(a.Query(ctx, req))
+	if ptSize == 0 {
+		panic("Error: Plaintext size is zero!")
+	}
 	if err != nil {
 		log.Fatalf("could not send the request: %v", err)
 	}
@@ -86,5 +89,5 @@ func StartAnalyst(serverAddr string, config *Config, userID, queryValue int64) (
 	end := time.Now()
 	elapsed := end.Sub(start)
 	log.Printf("Analyst finished in %s", elapsed)
-	return req.Value, results
+	return req.Value, results[:ptSize]
 }

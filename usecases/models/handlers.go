@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"math/big"
 )
 
 type PBHandler interface {
 	ReadPublicParams(res *pb.PublicParamsResp, err error) (*big.Int, *big.Int, []*big.Int, error)
-	ReadDecryptionKey(response *pb.AnalystResp, err error) ([]*big.Int, [][]*big.Int, error)
+	ReadDecryptionKey(response *pb.AnalystResp, err error) ([]*big.Int, [][]*big.Int, int32, error)
 }
 
 type pbHandler struct{}
@@ -45,9 +46,9 @@ func (pbh pbHandler) ReadPublicParams(response *pb.PublicParamsResp, err error) 
 }
 
 // ReadDecryptionKey convert the bytes data from server into required data type for @Analyst
-func (pbh pbHandler) ReadDecryptionKey(response *pb.AnalystResp, err error) ([]*big.Int, [][]*big.Int, error) {
+func (pbh pbHandler) ReadDecryptionKey(response *pb.AnalystResp, err error) ([]*big.Int, [][]*big.Int, int32, error) {
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	// Unmarshal dkv
@@ -70,7 +71,8 @@ func (pbh pbHandler) ReadDecryptionKey(response *pb.AnalystResp, err error) ([]*
 		cts = append(cts, []*big.Int{c0, c1})
 	}
 
-	return dkv, cts, nil
+	fmt.Println("DEBUG: ptSize: ", response.PtSize)
+	return dkv, cts, response.PtSize, nil
 }
 
 // DBHandler is an interface to work with sqlite3 database API
@@ -94,7 +96,7 @@ func (d dbHandler) GetUserReqById(userId int64) (*pb.UserReq, error) {
 	defer db.Close()
 
 	// Prepare the query
-	query := "SELECT regKey, ciphertext FROM " + d.TbName + " WHERE id = ?"
+	query := "SELECT regKey, ciphertext, ptSize FROM " + d.TbName + " WHERE id = ?"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, err
@@ -103,8 +105,10 @@ func (d dbHandler) GetUserReqById(userId int64) (*pb.UserReq, error) {
 
 	// Execute the query with the user ID
 	var regKey []byte
-	var ctx []byte // we stored it as []bytes
-	err = stmt.QueryRow(userId).Scan(&regKey, &ctx)
+	var cipherTX []byte // we stored it as []bytes
+	var ptSize int32
+
+	err = stmt.QueryRow(userId).Scan(&regKey, &cipherTX, &ptSize)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// No user found with the ID
@@ -122,7 +126,7 @@ func (d dbHandler) GetUserReqById(userId int64) (*pb.UserReq, error) {
 
 	// Decode the retrieved ciphertext into [][]bytes
 	var cipherText [][]byte
-	err = json.Unmarshal(ctx, &cipherText)
+	err = json.Unmarshal(cipherTX, &cipherText)
 	if err != nil {
 		panic(err)
 	}
@@ -130,6 +134,7 @@ func (d dbHandler) GetUserReqById(userId int64) (*pb.UserReq, error) {
 	userReq.Id = userId
 	userReq.RegKey = regKey
 	userReq.Ciphertext = cipherText
+	userReq.PtSize = ptSize
 
 	// Return the user request
 	return &userReq, nil
@@ -156,8 +161,8 @@ func (d dbHandler) InsertUsersCipher(data *pb.UserReq) error {
 	}
 
 	// Insert the data into the table
-	insertQuery := "INSERT INTO " + d.TbName + " (id, regKey, ciphertext) VALUES (?, ?, ?)"
-	_, err = db.Exec(insertQuery, data.Id, data.RegKey, ctx)
+	insertQuery := "INSERT INTO " + d.TbName + " (id, regKey, ciphertext, ptSize) VALUES (?, ?, ?, ?)"
+	_, err = db.Exec(insertQuery, data.Id, data.RegKey, ctx, data.PtSize)
 	if err != nil {
 		return err
 	}
@@ -184,7 +189,8 @@ func (d dbHandler) CreateUsersCipherTable() error {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS ` + d.TbName + ` (
 		id INTEGER PRIMARY KEY,
 		regKey BLOB,
-		ciphertext BLOB
+		ciphertext BLOB,
+		ptSize INTEGER
 	)`)
 	if err != nil {
 		return err

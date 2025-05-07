@@ -19,6 +19,7 @@ message UserReq {
   int64 id = 1; // user's identifier
   bytes regKey = 2; // user's registration key
   repeated bytes ciphertext = 3; // user's encrypted data
+  int32 ptSize = 4; // plaintext size for dropping the padding elements on the analyst side
 }
 
 message UserResp{
@@ -33,6 +34,7 @@ message AnalystReq {
 message AnalystResp {
   repeated bytes dkv = 1; // corresponding decryption key for query value
   repeated bytes ciphertext = 2; // corresponding user's ciphertext
+  int32 ptSize = 3; // plaintext size for dropping the padding elements
 }
 
 

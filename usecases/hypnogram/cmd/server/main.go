@@ -2,6 +2,7 @@ package main
 
 import (
 	"SPADE/usecases/models"
+	"fmt"
 	"os"
 )
 
@@ -12,6 +13,9 @@ func InitServer(serverAddr string) {
 }
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: ./server <serverAddr>")
+	}
 	serverAddr := os.Args[1]
 	InitServer(serverAddr)
 }

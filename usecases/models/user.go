@@ -32,7 +32,7 @@ func NewUser(uid int, q, g *big.Int, mpk []*big.Int) *User {
 
 // StartUser accepts user id and user's data as inputs and uses SPADE scheme to
 // encrypt user's data and send them to the server for storage
-func StartUser(serverAddr string, config *Config, id int, data []int) (u *User) {
+func StartUser(serverAddr string, config *Config, id int, data []int, plainSize int32) (u *User) {
 	start := time.Now()
 	pbHandler := NewPBHandler()
 
@@ -90,6 +90,7 @@ func StartUser(serverAddr string, config *Config, id int, data []int) (u *User) 
 		Id:         int64(user.id),
 		RegKey:     regKey.Bytes(),
 		Ciphertext: ctBytes,
+		PtSize:     plainSize,
 	}
 	ack, err := c.UserRequest(ctx, encData)
 	if err != nil {
